@@ -1,0 +1,910 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BEATMAX Training</title>
+    <link rel="icon" type="image/png" href="assets/icone.png">
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#020617">
+    <link rel="apple-touch-icon" href="assets/icone-192.png">
+    <!-- Tudo local (pasta vendor/): funciona sem internet e carrega mais rápido.
+         Tailwind já compilado com as classes usadas no projeto; fontes e ícones baixados. -->
+    <link rel="stylesheet" href="vendor/tailwind.css?v=20261028c">
+    <link rel="stylesheet" href="vendor/fonts.css?v=20261028c">
+    <link rel="stylesheet" href="vendor/fontawesome/css/all.min.css">
+    <!-- Custom Styles -->
+    <link rel="stylesheet" href="style.css?v=20261028c">
+</head>
+<body class="h-screen w-screen flex flex-col justify-between items-center bg-slate-950">
+
+    <!-- TOP NAVIGATION BAR -->
+    <header id="app-header" class="w-full bg-slate-900/90 border-b border-cyan-500/30 px-6 py-3 flex justify-between items-center z-20 backdrop-blur-md transition-all duration-300">
+        <div class="flex items-center gap-3">
+            <div class="w-4 h-8 bg-gradient-to-b from-cyan-400 to-pink-500 rounded-sm transform skew-x-[-12deg]"></div>
+            <div>
+                <h1 class="font-orbitron font-black text-xl tracking-wider text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 via-sky-200 to-pink-500">
+                    BEATMAX <span class="text-xs text-cyan-400 px-2 py-0.5 rounded border border-cyan-500/40 bg-cyan-950/50">TRAINING</span>
+                </h1>
+                <p class="text-xs text-slate-400 font-mono">Precision & Advanced Procedural Engine</p>
+            </div>
+            <button id="app-version-badge" type="button" title="Versão do jogo e atualizações" class="ml-1 self-center flex items-center gap-1.5 px-2.5 py-1 rounded-full border border-slate-600 bg-slate-800/80 hover:bg-slate-700 text-[11px] font-mono text-slate-300 transition">
+                <i class="fa-solid fa-rotate text-[10px] text-cyan-400"></i><span id="app-version-text">v…</span>
+            </button>
+        </div>
+        <div class="flex gap-4">
+            <button id="btn-chart-editor" class="px-4 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-semibold transition flex items-center gap-2">
+                <i class="fa-solid fa-pen-ruler text-green-400"></i> Chart Editor
+            </button>
+            <button id="btn-settings" class="px-4 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-semibold transition flex items-center gap-2">
+                <i class="fa-solid fa-sliders text-cyan-400"></i> Settings
+            </button>
+            <button id="btn-stats" class="px-4 py-1.5 rounded bg-slate-800 hover:bg-slate-700 border border-slate-600 text-sm font-semibold transition flex items-center gap-2">
+                <i class="fa-solid fa-chart-line text-pink-400"></i> Analysis
+            </button>
+        </div>
+    </header>
+
+    <!-- MAIN APP CANVAS & UI WRAPPER -->
+    <main id="app-main" class="relative flex-1 w-full flex items-center justify-center overflow-hidden">
+        
+        <!-- Game Canvas Area -->
+        <div id="game-container" class="relative w-full h-full flex items-center justify-center">
+            <canvas id="gameCanvas" class="rounded-lg border border-slate-800"></canvas>
+            <canvas id="gameCanvasGL" class="hidden rounded-lg border border-slate-800"></canvas>
+            
+            <!-- In-Game Quick Speed Controls (On-Screen Mobile / Click Support) -->
+            <div id="ingame-speed-hud" class="absolute top-4 left-4 z-10 flex items-center gap-2 bg-slate-900/90 border border-slate-700/60 px-3 py-1.5 rounded-lg shadow-lg">
+                <span class="text-[10px] font-mono text-slate-400">SPEED</span>
+                <span id="hud-speed-val" class="text-sm font-orbitron font-bold text-cyan-400">3.0x</span>
+                <div class="flex gap-1 ml-1">
+                    <button id="btn-speed-down" class="w-5 h-5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs flex items-center justify-center font-bold border border-slate-600">-</button>
+                    <button id="btn-speed-up" class="w-5 h-5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs flex items-center justify-center font-bold border border-slate-600">+</button>
+                </div>
+                <button id="btn-fullscreen" title="Tela cheia (F11 também funciona)" class="ml-1 w-6 h-5 bg-slate-800 hover:bg-slate-700 text-slate-300 rounded text-xs flex items-center justify-center border border-slate-600"><i class="fa-solid fa-expand"></i></button>
+                <button id="btn-hud-pause" title="Pausar (Esc · botão Menu ☰ do controle)" class="ml-1 h-5 px-2 bg-amber-500/20 hover:bg-amber-500/40 text-amber-200 rounded text-[11px] font-bold flex items-center justify-center gap-1 border border-amber-400/60"><i class="fa-solid fa-pause"></i><span>PAUSA</span></button>
+            </div>
+
+            <div id="touch-controls" class="absolute bottom-4 left-1/2 -translate-x-1/2 w-full max-w-md flex justify-center gap-2 px-4 md:hidden pointer-events-auto"></div>
+        </div>
+
+        <!-- TRACK SELECT SCREEN (dedicada, estilo song-select) -->
+        <div id="menu-overlay" class="absolute inset-0 bg-slate-950/97 flex flex-col z-30 overflow-hidden">
+
+            <!-- Top bar -->
+            <div class="flex justify-between items-center px-5 py-3.5 border-b border-slate-800 shrink-0">
+                <div>
+                    <h2 class="font-orbitron text-lg font-bold text-cyan-400 tracking-wide">TRACK SELECT</h2>
+                    <p class="text-[10px] text-slate-500">Escolha o exercício, ajuste o ambiente e comece a treinar</p>
+                </div>
+                <div class="flex gap-2">
+                    <button class="mode-btn active-mode px-3 py-1.5 rounded text-sm font-orbitron font-bold border border-cyan-500 bg-cyan-950/50 text-cyan-300" data-mode="4K">4B</button>
+                    <button class="mode-btn px-3 py-1.5 rounded text-sm font-orbitron font-bold border border-slate-700 bg-slate-800 text-slate-400 hover:text-white" data-mode="5K">5B</button>
+                    <button class="mode-btn px-3 py-1.5 rounded text-sm font-orbitron font-bold border border-slate-700 bg-slate-800 text-slate-400 hover:text-white" data-mode="6K">6B</button>
+                    <button class="mode-btn px-3 py-1.5 rounded text-sm font-orbitron font-bold border border-slate-700 bg-slate-800 text-slate-400 hover:text-white" data-mode="8K">8B</button>
+                </div>
+            </div>
+
+            <!-- Corpo: preview (esquerda) + lista (direita) -->
+            <div class="flex-1 flex flex-col md:flex-row overflow-hidden">
+
+                <!-- LEFT: preview + configuração do treino -->
+                <div class="w-full md:w-[360px] shrink-0 border-b md:border-b-0 md:border-r border-slate-800 p-4 flex flex-col gap-3 overflow-y-auto">
+
+                    <!-- Preview card -->
+                    <div id="song-preview-card" class="rounded-xl border border-cyan-500/30 bg-gradient-to-br from-slate-800/80 to-slate-900 p-4 flex flex-col gap-2">
+                        <div class="flex justify-between items-start gap-2">
+                            <div id="preview-icon" class="w-11 h-11 rounded-lg bg-gradient-to-br from-cyan-500/30 to-slate-800 flex items-center justify-center text-cyan-300 font-orbitron font-bold text-sm shrink-0 border border-cyan-500/30">ST</div>
+                            <span id="preview-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-500/20 text-green-400 border border-green-500/30">SPEED</span>
+                        </div>
+                        <h3 id="preview-title" class="font-orbitron text-base font-bold text-white leading-tight">Staircase & Stream</h3>
+                        <p id="preview-desc" class="text-xs text-slate-400 leading-snug">Rolamento contínuo entre colunas para independência de dedos e ritmo constante.</p>
+                        <div class="flex justify-between text-[10px] text-slate-500 font-mono pt-1 border-t border-slate-800">
+                            <span id="preview-bpm">BPM: 140</span>
+                            <span id="preview-track">Cyber Wave</span>
+                        </div>
+                    </div>
+
+                    <!-- Difficulty pills (sincronizado com main-diff-select, mantido oculto) -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-amber-400 mb-1 font-mono uppercase">
+                            <i class="fa-solid fa-layer-group mr-1"></i> Dificuldade do treino
+                        </label>
+                        <div id="diff-pills" class="grid grid-cols-4 gap-1.5">
+                            <button data-diff="NM" class="diff-pill py-1.5 rounded text-[11px] font-orbitron font-bold border border-slate-700 bg-slate-800 text-slate-400">NORMAL</button>
+                            <button data-diff="HD" class="diff-pill py-1.5 rounded text-[11px] font-orbitron font-bold border border-amber-500 bg-amber-950/50 text-amber-300">HARD</button>
+                            <button data-diff="MX" class="diff-pill py-1.5 rounded text-[11px] font-orbitron font-bold border border-slate-700 bg-slate-800 text-slate-400">EXPERT</button>
+                            <button data-diff="SC" class="diff-pill py-1.5 rounded text-[11px] font-orbitron font-bold border border-slate-700 bg-slate-800 text-slate-400">MASTER</button>
+                        </div>
+                        <select id="main-diff-select" class="hidden">
+                            <option value="NM">NORMAL</option>
+                            <option value="HD" selected>HARD</option>
+                            <option value="MX">EXPERT</option>
+                            <option value="SC">MASTER</option>
+                        </select>
+                    </div>
+
+                    <!-- Note skin / Gear skin -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-cyan-400 mb-1 font-mono uppercase">Note Skin</label>
+                            <select id="main-note-shape" class="w-full bg-slate-900 border border-slate-700 text-[11px] rounded px-2 py-1.5 text-cyan-300 font-bold outline-none focus:border-cyan-400">
+                                <option value="djmax">Clássica (barra fina)</option>
+                                <option value="hexbar">Hex Bar (pontas em bico)</option>
+                                <option value="crossbar">Cross Bar (com X)</option>
+                                <option value="bar">Bar (grossa)</option>
+                                <option value="circle">Circle (Sphere)</option>
+                                <option value="diamond">Diamond</option>
+                                <option value="hex">Hex Gem (girando)</option>
+                                <option value="pulse">Pulse Core (sonar)</option>
+                                <option value="disc">Disco (redondo, estilo GH)</option>
+                                <option value="orb">Esfera 3D (redonda)</option>
+                                <option value="ring">Anel (redondo vazado)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-pink-400 mb-1 font-mono uppercase">Gear Skin</label>
+                            <select id="main-gear-skin" class="w-full bg-slate-900 border border-slate-700 text-[11px] rounded px-2 py-1.5 text-pink-300 font-bold outline-none focus:border-pink-400">
+                                <optgroup label="Gears com moldura (novas)">
+                                    <option value="respect">Grafite</option>
+                                    <option value="clockwork">Relojoaria (dourado)</option>
+                                    <option value="prism">Prisma (rosa/ciano)</option>
+                                    <option value="hazard">Alerta (vermelho)</option>
+                                    <option value="stage">Palco (industrial)</option>
+                                    <option value="neon">Neon Roxo</option>
+                                </optgroup>
+                                <optgroup label="Gears antigas (sem moldura)">
+                                <option value="cyan">Neon Cyber Grid</option>
+                                <option value="crimson">Hardcore Metal Beams</option>
+                                <option value="gold">Gold Legend Arcade</option>
+                                <option value="sakura">Sakura Pulse</option>
+                                <option value="chrome">Chrome Zero</option>
+                                <option value="matrix">Matrix Rain</option>
+                                <option value="void">Void Nebula</option>
+                                </optgroup>
+                            </select>
+                        </div>
+                    </div>
+
+                    <!-- Visual da tela de jogo (só a gear clássica agora) -->
+                    <div class="hidden">
+                        <label class="block text-[10px] font-bold text-violet-300 mb-1 font-mono uppercase">Visual do jogo</label>
+                        <select id="main-game-view" class="w-full bg-slate-900 border border-slate-700 text-[11px] rounded px-2 py-1.5 text-violet-200 font-bold outline-none focus:border-violet-400">
+                            <option value="classic">Gear clássica</option>
+                        </select>
+                    </div>
+
+                    <!-- Speed -->
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 mb-1">SPEED (<span id="speed-val">3.0</span>x · <span id="speed-travel-ms" class="text-cyan-400">~1000ms na tela</span>)</label>
+                        <input type="range" id="speed-slider" min="1.0" max="10.0" step="0.1" value="3.0" class="w-full accent-cyan-400 bg-slate-800 rounded">
+                    </div>
+
+                    <!-- Mods -->
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 mb-1">RANDOM</label>
+                            <select id="mod-random" class="w-full bg-slate-800 border border-slate-700 text-[11px] rounded px-2 py-1.5 focus:border-cyan-400 outline-none">
+                                <option value="none">OFF</option>
+                                <option value="random">RANDOM</option>
+                                <option value="mirror">MIRROR</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 mb-1">LANE COVER</label>
+                            <select id="mod-cover" class="w-full bg-slate-800 border border-slate-700 text-[11px] rounded px-2 py-1.5 focus:border-cyan-400 outline-none">
+                                <option value="none">OFF</option>
+                                <option value="sudden">SUDDEN</option>
+                                <option value="hidden">HIDDEN</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="flex-1"></div>
+
+                    <button id="btn-start" class="w-full py-3 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-orbitron font-black text-lg tracking-widest rounded-xl transition transform active:scale-[0.99] shadow-lg shadow-cyan-500/25">
+                        START PRACTICE
+                    </button>
+                </div>
+
+                <!-- RIGHT: lista de exercícios -->
+                <div class="flex-1 flex flex-col overflow-hidden min-h-[200px]">
+                    <div id="pattern-grid" class="flex-1 overflow-y-auto p-3 flex flex-col gap-1.5">
+                        <!-- Os cards dos treinos são montados pelo script (ver DRILLS/renderDrillCards) -->
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- PAUSE & REWIND MODAL OVERLAY -->
+        <div id="pause-modal" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-md flex justify-center items-center p-6 z-[45]">
+            <div class="max-w-md w-full bg-slate-900 border border-amber-500/40 rounded-2xl p-6 shadow-2xl flex flex-col gap-4 text-center">
+                <h3 class="font-orbitron text-2xl font-bold text-amber-400">PRACTICE PAUSED</h3>
+                
+                <div class="flex justify-center gap-3 my-2">
+                    <button id="btn-rw5" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 text-sm font-semibold text-cyan-400">
+                        <i class="fa-solid fa-rotate-left mr-1"></i> -5s Rewind
+                    </button>
+                    <button id="btn-ff5" class="px-4 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 text-sm font-semibold text-cyan-400">
+                        +5s Skip <i class="fa-solid fa-rotate-right ml-1"></i>
+                    </button>
+                </div>
+
+                <!-- Loop de trecho: marque início/fim enquanto pausado para repetir automaticamente -->
+                <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700 flex flex-col gap-2 text-left">
+                    <span class="text-xs font-bold text-slate-200 text-center">PRACTICE LOOP</span>
+                    <div class="flex gap-2">
+                        <button id="btn-loop-start" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 text-xs font-semibold text-cyan-400">
+                            <i class="fa-solid fa-flag mr-1"></i> Marcar Início
+                        </button>
+                        <button id="btn-loop-end" class="flex-1 py-2 bg-slate-800 hover:bg-slate-700 rounded-lg border border-slate-700 text-xs font-semibold text-pink-400">
+                            <i class="fa-solid fa-flag-checkered mr-1"></i> Marcar Fim
+                        </button>
+                    </div>
+                    <div class="flex items-center justify-between text-xs mt-1">
+                        <span id="loop-status" class="text-slate-400 font-mono">Loop: marque início e fim</span>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <span class="text-slate-300">Ativar</span>
+                            <input type="checkbox" id="setting-loop-enabled" class="accent-cyan-400 w-4 h-4 cursor-pointer">
+                        </label>
+                    </div>
+                    <button id="btn-loop-clear" class="w-full py-1.5 bg-slate-800/80 hover:bg-slate-700 border border-slate-700 rounded-lg text-[10px] text-slate-400">
+                        Limpar marcações
+                    </button>
+                </div>
+
+                <div class="flex flex-col gap-2 pt-2 border-t border-slate-800">
+                    <button id="btn-resume" class="w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-orbitron font-bold rounded-lg transition">RESUME</button>
+                    <button id="btn-pause-restart" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-amber-500/40 text-amber-400 font-orbitron font-bold rounded-lg transition">
+                        <i class="fa-solid fa-rotate mr-1"></i> RESTART <span class="text-[10px] text-slate-500 font-normal">(F8)</span>
+                    </button>
+                    <button id="btn-pause-menu" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-orbitron font-bold rounded-lg transition">QUIT TO MENU</button>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- CALIBRATOR MODAL -->
+        <div id="calibrator-modal" class="hidden absolute inset-0 bg-slate-950/95 backdrop-blur-md flex justify-center items-center p-6 z-[60]">
+            <div class="max-w-sm w-full bg-slate-900 border border-cyan-500/40 rounded-2xl p-6 shadow-2xl flex flex-col gap-4 text-center">
+                <h3 class="font-orbitron text-xl font-bold text-cyan-400">AUTO OFFSET CALIBRATOR</h3>
+
+                <p id="calibrator-instructions" class="text-xs text-slate-400">
+                    Pressione qualquer tecla (ex: <span class="text-cyan-400 font-bold">ESPAÇO</span>) exatamente no momento de cada "beep". As duas primeiras batidas são só aquecimento.
+                </p>
+
+                <div id="calibrator-pulse" class="w-24 h-24 mx-auto rounded-full border-4 border-cyan-500 flex items-center justify-center font-orbitron text-2xl font-bold text-cyan-300 transition-transform duration-100">
+                    <span id="calibrator-count">0</span>
+                </div>
+
+                <span id="calibrator-captures" class="text-[10px] text-slate-500 font-mono">Capturas: 0</span>
+
+                <div id="calibrator-result" class="hidden flex-col gap-1">
+                    <p class="text-xs text-slate-400">Offset sugerido:</p>
+                    <p id="calibrator-suggested" class="text-3xl font-orbitron font-bold text-cyan-400">0 ms</p>
+                    <p id="calibrator-sample-count" class="text-[10px] text-slate-500"></p>
+                </div>
+
+                <div class="flex flex-col gap-2 pt-2 border-t border-slate-800">
+                    <button id="btn-calibrator-apply" class="hidden w-full py-2.5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-orbitron font-bold rounded-lg transition">APLICAR</button>
+                    <button id="btn-calibrator-cancel" class="w-full py-2.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 text-white font-orbitron font-bold rounded-lg transition">CANCELAR</button>
+                </div>
+            </div>
+        </div>
+
+
+        <!-- SETTINGS MODAL -->
+        <div id="settings-modal" class="hidden absolute inset-0 bg-slate-950/85 backdrop-blur-md flex justify-center items-center p-4 z-[85]">
+            <div class="max-w-3xl w-full bg-slate-900 border border-slate-700 rounded-2xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+                <div class="flex justify-between items-center px-6 py-4 border-b border-slate-800 shrink-0">
+                    <div>
+                        <h3 class="font-orbitron text-xl font-bold text-cyan-400">CONFIGURAÇÕES</h3>
+                        <p class="text-[10px] text-slate-500">Tudo é salvo automaticamente neste navegador.</p>
+                    </div>
+                    <button id="btn-close-settings-x" class="text-slate-400 hover:text-white text-lg"><i class="fa-solid fa-xmark"></i></button>
+                </div>
+
+                <div class="flex-1 overflow-y-auto px-6 py-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+
+                    <!-- ===== SINCRONIA ===== -->
+                    <section class="md:col-span-2 bg-slate-800/40 rounded-xl border border-slate-700 p-4 flex flex-col gap-3">
+                        <div class="flex items-center justify-between">
+                            <h4 class="text-sm font-bold text-cyan-300"><i class="fa-solid fa-stopwatch mr-1.5"></i>Sincronia (timing)</h4>
+                            <span class="text-[10px] text-slate-500">Dica: jogue uma partida e use o botão da tela de resultado.</span>
+                        </div>
+                        <div class="flex flex-wrap items-center justify-between gap-2 bg-cyan-950/40 border border-cyan-700/50 rounded-lg p-2.5">
+                            <span>
+                                <span class="text-xs font-bold text-cyan-200 block">Calibração rápida (≈30s)</span>
+                                <span class="text-[10px] text-slate-300">Toque olhando as notas e depois só ouvindo a batida. No fim, o Ajuste de Julgamento e o Offset de Áudio já ficam certos pra todos os modos, visuais e gears.</span>
+                            </span>
+                            <button id="btn-start-calibration" class="px-3 py-1.5 rounded-lg bg-cyan-500 hover:bg-cyan-400 text-slate-950 text-xs font-bold">Calibrar agora</button>
+                        </div>
+                        <label class="flex flex-wrap items-center justify-between gap-2">
+                            <span>
+                                <span class="text-xs font-bold text-slate-200 block">Dificuldade do julgamento</span>
+                                <span class="text-[10px] text-slate-400">Igual ao jogo original: degraus de 10% (MAX 100% … MAX 10%), MAX 1% e BREAK. Normal é o padrão do jogo.</span>
+                            </span>
+                            <select id="setting-judge-difficulty" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs text-slate-100">
+                                <option value="normal">Normal — MAX 100% em ±41,6ms</option>
+                                <option value="hard">Difícil — MAX 100% em ±20,8ms</option>
+                                <option value="max">Máximo — MAX 100% em ±10,4ms</option>
+                            </select>
+                        </label>
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-slate-200 mb-1">
+                                    <span>Sincronia do julgamento — <span id="judge-offset-view-label">vale pra tudo</span></span>
+                                    <span id="judge-offset-val" class="text-cyan-400 font-mono">0 ms</span>
+                                </div>
+                                <input type="range" id="judge-offset-slider" min="-120" max="120" step="1" value="0" class="w-full accent-cyan-400">
+                                <p class="text-[10px] text-slate-400 mt-1 leading-snug">UM valor só pro seu PC (atraso da tela + teclado), igual em todas as músicas, gears, visuais e modos — como o "ajuste de julgamento" dos jogos de ritmo. Acerte uma vez com a Calibração e deixe fixo. Se mesmo acertando junto sai sempre SLOW (+ms), aumente; se sai FAST, diminua.</p>
+                                <label class="hidden"><input type="checkbox" id="setting-judge-linked" checked disabled></label>
+                                <button id="btn-reset-judge-offset" class="mt-1.5 px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-[10px] text-slate-300">Zerar</button>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs font-bold text-slate-200 mb-1">
+                                    <span>Sincronia da música (música ↔ notas)</span>
+                                    <span id="offset-val" class="text-cyan-400 font-mono">0 ms</span>
+                                </div>
+                                <input type="range" id="offset-slider" min="-200" max="200" step="5" value="0" class="w-full accent-cyan-400">
+                                <p class="text-[10px] text-slate-400 mt-1 leading-snug">Alinha o SOM com as notas (como o "tempo de saída das notas" dos jogos de ritmo). Também é um valor só, pra tudo: só muda se trocar de fone/caixa (Bluetooth atrasa bastante). A música agora segue o relógio da placa de som, então não "escorrega" entre partidas.</p>
+                                <div class="flex gap-1.5 mt-1.5">
+                                    <button id="btn-open-calibrator" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-cyan-700/50 rounded text-[10px] font-semibold text-cyan-400">
+                                        <i class="fa-solid fa-wave-square mr-1"></i> Calibrar batendo no ritmo
+                                    </button>
+                                    <button id="btn-reset-audio-offset" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-[10px] text-slate-300">Zerar</button>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- ===== JOGABILIDADE ===== -->
+                    <section class="bg-slate-800/40 rounded-xl border border-slate-700 p-4 flex flex-col gap-3">
+                        <h4 class="text-sm font-bold text-cyan-300"><i class="fa-solid fa-gamepad mr-1.5"></i>Jogabilidade</h4>
+                        <label class="flex items-start justify-between gap-3 cursor-pointer">
+                            <span>
+                                <span class="text-xs font-bold text-slate-200 block">Sem game over (No Fail)</span>
+                                <span class="text-[10px] text-slate-400">Continua jogando mesmo com o HP zerado.</span>
+                            </span>
+                            <input type="checkbox" id="setting-no-fail" class="accent-cyan-400 w-5 h-5 cursor-pointer shrink-0 mt-0.5">
+                        </label>
+                        <div class="text-[10px] font-bold text-slate-500 uppercase font-mono pt-1 border-t border-slate-700/60">Só nos exercícios gerados</div>
+                        <label class="flex items-start justify-between gap-3 cursor-pointer">
+                            <span>
+                                <span class="text-xs font-bold text-slate-200 block">Notas longas (hold)</span>
+                                <span class="text-[10px] text-slate-400">Coloca holds de vez em quando. Nos charts do editor valem as holds que você mesmo desenhou.</span>
+                            </span>
+                            <input type="checkbox" id="setting-long-notes" class="accent-cyan-400 w-5 h-5 cursor-pointer shrink-0 mt-0.5">
+                        </label>
+                        <label class="flex items-start justify-between gap-3 cursor-pointer">
+                            <span>
+                                <span class="text-xs font-bold text-slate-200 block">Notas junto com a Side Track</span>
+                                <span class="text-[10px] text-slate-400">Desligado (clássico): a Side Track vem sozinha. Ligado: notas normais continuam caindo junto, pra mais desafio.</span>
+                            </span>
+                            <input type="checkbox" id="setting-enhanced-side-notes" class="accent-cyan-400 w-5 h-5 cursor-pointer shrink-0 mt-0.5">
+                        </label>
+                    </section>
+
+                    <!-- ===== VÍDEO ===== -->
+                    <section class="bg-slate-800/40 rounded-xl border border-slate-700 p-4 flex flex-col gap-3">
+                        <h4 class="text-sm font-bold text-cyan-300"><i class="fa-solid fa-display mr-1.5"></i>Vídeo</h4>
+                        <label class="flex flex-col gap-1">
+                            <span class="text-xs font-bold text-slate-200">Renderizador da tela de jogo</span>
+                            <select id="setting-renderer" class="bg-slate-900 border border-slate-600 rounded px-2 py-1.5 text-xs text-slate-100">
+                                <option value="webgl">WebGL — placa de vídeo (recomendado, mais fluido)</option>
+                                <option value="2d">Canvas 2D — compatibilidade</option>
+                            </select>
+                            <span id="renderer-status" class="text-[10px] text-slate-400"></span>
+                        </label>
+                        <label class="flex items-start justify-between gap-3 cursor-pointer">
+                            <span>
+                                <span class="text-xs font-bold text-slate-200 block">Mostrar FPS</span>
+                                <span class="text-[10px] text-slate-400">Mostra quadros por segundo e o tempo do pior quadro no canto da tela (pra conferir se está liso).</span>
+                            </span>
+                            <input type="checkbox" id="setting-show-fps" class="accent-cyan-400 w-5 h-5 cursor-pointer shrink-0 mt-0.5">
+                        </label>
+                        <label class="flex items-center justify-between gap-3">
+                            <span class="text-xs font-bold text-slate-200" title="Clássico: combo no alto e julgamento no meio da gear. Tudo no meio: combo e julgamento juntos no centro.">Posição do combo/julgamento</span>
+                            <select id="setting-hud-layout" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs text-slate-100">
+                                <option value="djmax">Clássico</option>
+                                <option value="center">Tudo no meio</option>
+                            </select>
+                        </label>
+                        <div class="space-y-1.5" id="hud-show-box">
+                            <div class="flex items-center justify-between gap-2">
+                                <span class="text-xs font-bold text-slate-200">Mostrar na gear</span>
+                                <span class="flex gap-1">
+                                    <button type="button" id="btn-hud-show-all" class="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-[10px] font-bold text-slate-100">Tudo</button>
+                                    <button type="button" id="btn-hud-show-min" class="px-2 py-0.5 rounded bg-slate-700 hover:bg-slate-600 text-[10px] font-bold text-slate-100" title="Deixa só o julgamento e as notas">Limpo</button>
+                                </span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-x-3 gap-y-1">
+                                <label class="flex items-center gap-2 cursor-pointer text-[11px] text-slate-300"><input type="checkbox" data-hud-show="combo" checked class="accent-cyan-400 w-4 h-4 cursor-pointer">Combo</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-[11px] text-slate-300"><input type="checkbox" data-hud-show="judge" checked class="accent-cyan-400 w-4 h-4 cursor-pointer">Julgamento (MAX 100%)</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-[11px] text-slate-300"><input type="checkbox" data-hud-show="fastslow" checked class="accent-cyan-400 w-4 h-4 cursor-pointer">FAST / SLOW</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-[11px] text-slate-300"><input type="checkbox" data-hud-show="rate" checked class="accent-cyan-400 w-4 h-4 cursor-pointer">RATE</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-[11px] text-slate-300"><input type="checkbox" data-hud-show="meter" checked class="accent-cyan-400 w-4 h-4 cursor-pointer">Barra de timing</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-[11px] text-slate-300"><input type="checkbox" data-hud-show="hp" checked class="accent-cyan-400 w-4 h-4 cursor-pointer">Barra de HP</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-[11px] text-slate-300"><input type="checkbox" data-hud-show="panel" checked class="accent-cyan-400 w-4 h-4 cursor-pointer">Painel de baixo (SPEED, score, modo)</label>
+                                <label class="flex items-center gap-2 cursor-pointer text-[11px] text-slate-300"><input type="checkbox" data-hud-show="title" checked class="accent-cyan-400 w-4 h-4 cursor-pointer">Nome do treino no pilar</label>
+                            </div>
+                        </div>
+                        <label class="flex items-start justify-between gap-3 cursor-pointer">
+                            <span>
+                                <span class="text-xs font-bold text-slate-200 block">Tela cheia automática</span>
+                                <span class="text-[10px] text-slate-400">Entra em tela cheia no START e volta ao normal no resultado ou ao sair.</span>
+                            </span>
+                            <input type="checkbox" id="setting-auto-fullscreen" class="accent-cyan-400 w-5 h-5 cursor-pointer shrink-0 mt-0.5">
+                        </label>
+                        <div class="text-[10px] font-bold text-slate-500 uppercase font-mono pt-1 border-t border-slate-700/60">Gear e fundo</div>
+                        <label class="flex items-center justify-between gap-3">
+                            <span class="text-xs font-bold text-slate-200">Posição da gear</span>
+                            <select id="setting-gear-position" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs text-slate-100">
+                                <option value="left">Esquerda</option>
+                                <option value="center">Centro</option>
+                                <option value="right">Direita</option>
+                            </select>
+                        </label>
+                        <div class="flex flex-col gap-1">
+                            <div class="flex justify-between text-xs"><span class="font-bold text-slate-200">Opacidade da pista</span><span id="lane-opacity-val" class="font-mono text-cyan-300">100%</span></div>
+                            <input type="range" id="setting-lane-opacity" min="0" max="100" step="10" value="100" class="accent-cyan-400">
+                            <span class="text-[10px] text-slate-400">Menos opaca deixa ver a imagem de fundo por trás das notas (como a transparência da gear no jogo).</span>
+                        </div>
+                        <div class="flex flex-col gap-1">
+                            <span class="text-xs font-bold text-slate-200">Imagem de fundo</span>
+                            <div class="flex gap-2 items-center">
+                                <label class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-xs cursor-pointer">Escolher imagem…<input type="file" id="setting-bg-image" accept="image/*" class="hidden"></label>
+                                <button id="btn-bg-remove" class="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-xs border border-slate-600">Remover</button>
+                                <span id="bg-image-status" class="text-[10px] text-slate-400">Nenhuma</span>
+                            </div>
+                            <div class="flex justify-between text-xs mt-1"><span class="text-slate-300">Escurecer fundo</span><span id="bg-dim-val" class="font-mono text-cyan-300">55%</span></div>
+                            <input type="range" id="setting-bg-dim" min="0" max="90" step="5" value="55" class="accent-cyan-400">
+                        </div>
+                        <label class="flex items-start justify-between gap-3 cursor-pointer">
+                            <span>
+                                <span class="text-xs font-bold text-slate-200 block">Baixa latência de imagem (experimental)</span>
+                                <span class="text-[10px] text-slate-400">Manda o quadro direto pra tela, sem esperar o compositor do navegador. Menos atraso, mas em alguns PCs a imagem pode "rasgar". Só vale com WebGL.</span>
+                            </span>
+                            <input type="checkbox" id="setting-low-latency" class="accent-cyan-400 w-5 h-5 cursor-pointer shrink-0 mt-0.5">
+                        </label>
+                    </section>
+
+                    <!-- ===== ÁUDIO ===== -->
+                    <section class="bg-slate-800/40 rounded-xl border border-slate-700 p-4 flex flex-col gap-3">
+                        <h4 class="text-sm font-bold text-cyan-300"><i class="fa-solid fa-volume-high mr-1.5"></i>Áudio</h4>
+                        <div class="flex flex-col gap-1 text-xs">
+                            <div class="flex justify-between">
+                                <span class="font-bold text-slate-200">Volume geral</span>
+                                <span id="vol-val" class="text-cyan-400 font-mono">70%</span>
+                            </div>
+                            <input type="range" id="audio-volume" min="0" max="1" step="0.05" value="0.7" class="accent-cyan-400">
+                        </div>
+                        <label class="flex items-start justify-between gap-3 cursor-pointer">
+                            <span>
+                                <span class="text-xs font-bold text-slate-200 block">Música</span>
+                                <span class="text-[10px] text-slate-400">A trilha dos exercícios e o áudio dos seus charts. Desligue pra treinar só no visual.</span>
+                            </span>
+                            <input type="checkbox" id="audio-music" checked class="accent-cyan-400 w-5 h-5 cursor-pointer shrink-0 mt-0.5">
+                        </label>
+                        <label class="flex items-start justify-between gap-3 cursor-pointer">
+                            <span>
+                                <span class="text-xs font-bold text-slate-200 block">Som das teclas</span>
+                                <span class="text-[10px] text-slate-400">Um "tic" a cada tecla apertada. A contagem, o calibrador e o Clap do editor tocam sempre.</span>
+                            </span>
+                            <input type="checkbox" id="audio-hitsounds" checked class="accent-cyan-400 w-5 h-5 cursor-pointer shrink-0 mt-0.5">
+                        </label>
+                        <label class="flex items-center justify-between gap-2">
+                            <span class="text-xs font-bold text-slate-200">Som do toque</span>
+                            <span class="flex gap-1.5">
+                                <select id="audio-hit-type" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs text-slate-100">
+                                    <option value="soft">Suave (tic abafado)</option>
+                                    <option value="click">Clique de madeira</option>
+                                    <option value="clap">Palma</option>
+                                    <option value="kick">Bumbo</option>
+                                    <option value="hat">Chimbal</option>
+                                    <option value="rim">Aro de caixa</option>
+                                    <option value="bell">Sino</option>
+                                    <option value="keysound">Nota da música (keysound)</option>
+                                    <option value="classic">Antigo (bip)</option>
+                                </select>
+                                <button id="btn-hit-preview" class="px-2 py-1 rounded bg-slate-700 hover:bg-slate-600 text-xs" title="Ouvir">▶</button>
+                            </span>
+                        </label>
+                        <div class="flex flex-col gap-1 text-xs">
+                            <div class="flex justify-between"><span class="text-slate-300">Volume do toque</span><span id="hit-vol-val" class="text-cyan-400 font-mono">60%</span></div>
+                            <input type="range" id="audio-hit-volume" min="0" max="1" step="0.05" value="0.6" class="accent-cyan-400">
+                        </div>
+                        <div class="flex flex-col gap-1 text-xs">
+                            <div class="flex justify-between"><span class="text-slate-300">Volume da música</span><span id="music-vol-val" class="text-cyan-400 font-mono">80%</span></div>
+                            <input type="range" id="audio-music-volume" min="0" max="1" step="0.05" value="0.8" class="accent-cyan-400">
+                        </div>
+                        <label class="flex flex-col gap-1">
+                            <span class="text-xs font-bold text-slate-200">Melodia das notas (treinos)</span>
+                            <select id="audio-note-melody" class="bg-slate-900 border border-slate-600 rounded px-2 py-1 text-xs text-slate-100">
+                                <option value="guide">Guia — cada nota toca no tempo certo (recomendado)</option>
+                                <option value="hit">Keysound — a nota só toca quando você acerta (como nos jogos de teclas)</option>
+                                <option value="off">Desligada — só bateria e baixo</option>
+                            </select>
+                            <span class="text-[10px] text-slate-400">A música dos treinos agora é feita das próprias notas: cada lane é uma nota do acorde, então o que você ouve é exatamente o que está caindo.</span>
+                        </label>
+                    </section>
+
+                    <!-- ===== TECLAS ===== -->
+                    <section class="md:col-span-2 bg-slate-800/40 rounded-xl border border-slate-700 p-4 flex flex-col gap-3">
+                        <div class="flex flex-wrap items-center justify-between gap-2">
+                            <h4 class="text-sm font-bold text-cyan-300"><i class="fa-solid fa-keyboard mr-1.5"></i>Teclas — <span id="key-mode-label" class="text-white">4B</span></h4>
+                            <div class="flex items-center gap-1.5">
+                                <div id="keybind-mode-tabs" class="flex gap-1">
+                                    <button data-keybind-mode="4K" class="px-2 py-0.5 rounded border border-slate-600 text-[10px] font-bold">4B</button>
+                                    <button data-keybind-mode="5K" class="px-2 py-0.5 rounded border border-slate-600 text-[10px] font-bold">5B</button>
+                                    <button data-keybind-mode="6K" class="px-2 py-0.5 rounded border border-slate-600 text-[10px] font-bold">6B</button>
+                                    <button data-keybind-mode="8K" class="px-2 py-0.5 rounded border border-slate-600 text-[10px] font-bold">8B</button>
+                                </div>
+                                <button id="btn-reset-keybinds" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-[10px] text-slate-300">Restaurar padrão</button>
+                            </div>
+                        </div>
+                        <span class="text-[10px] text-slate-400 -mt-1">Clique numa caixa e aperte a tecla desejada.</span>
+                        <div id="keybinds-config" class="grid grid-cols-2 md:grid-cols-5 gap-2 text-xs"></div>
+                    </section>
+                </div>
+
+                <div class="px-6 py-3 border-t border-slate-800 shrink-0">
+                    <button id="btn-close-settings" class="w-full py-2 bg-cyan-600 hover:bg-cyan-500 font-bold rounded-lg text-sm text-slate-950">
+                        Fechar
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- POST-SONG STATS / ANALYSIS OVERLAY -->
+        <div id="stats-overlay" class="hidden absolute inset-0 bg-slate-950/95 backdrop-blur-xl flex justify-center items-center p-6 z-40">
+            <div class="max-w-2xl w-full bg-slate-900 border border-cyan-500/40 rounded-2xl p-6 shadow-2xl flex flex-col gap-6">
+                
+                <div class="flex justify-between items-start border-b border-slate-800 pb-4">
+                    <div>
+                        <h2 class="font-orbitron text-3xl font-black text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-pink-500">PERFORMANCE ANALYSIS</h2>
+                        <div id="summary-song" class="mt-2 min-w-0">
+                            <div id="summary-song-title" class="font-orbitron text-lg font-bold text-white leading-tight break-words"></div>
+                            <div id="summary-song-sub" class="text-[13px] text-pink-200/90 leading-tight"></div>
+                            <div id="summary-song-meta" class="text-[11px] text-slate-400 font-mono mt-0.5"></div>
+                        </div>
+                        <div id="completion-badge" class="mt-1"></div>
+                    </div>
+                    <div class="text-right">
+                        <div id="summary-rate" class="font-orbitron text-4xl font-black text-cyan-400">0.00%</div>
+                        <div id="summary-rank" class="font-orbitron font-bold text-pink-400 text-sm">RANK F</div>
+                    </div>
+                </div>
+
+                <!-- Stats Grid -->
+                <div class="grid grid-cols-3 md:grid-cols-5 gap-3 text-center">
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                        <span class="block text-xs text-slate-400">MAX 100%</span>
+                        <span id="stat-max100" class="font-orbitron text-xl font-bold text-cyan-400">0</span>
+                    </div>
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                        <span class="block text-xs text-slate-400">MAX 90%</span>
+                        <span id="stat-max90" class="font-orbitron text-xl font-bold text-green-400">0</span>
+                    </div>
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                        <span class="block text-xs text-slate-400">LOWER MAX</span>
+                        <span id="stat-lower" class="font-orbitron text-xl font-bold text-amber-400">0</span>
+                    </div>
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                        <span class="block text-xs text-slate-400">BREAK (ERROS)</span>
+                        <span id="stat-break" class="font-orbitron text-xl font-bold text-red-500">0</span>
+                    </div>
+                    <div class="bg-slate-800/50 p-3 rounded-lg border border-slate-700">
+                        <span class="block text-xs text-slate-400">MAX COMBO</span>
+                        <span id="stat-maxcombo" class="font-orbitron text-xl font-bold text-white">0</span>
+                    </div>
+                </div>
+
+                <!-- Fast / Late Tendency Indicator -->
+                <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-800">
+                    <h4 class="text-xs font-bold text-slate-300 mb-2 flex justify-between">
+                        <span>TIMING TENDENCY (EARLY vs LATE)</span>
+                        <span id="timing-bias-text" class="text-cyan-400 font-mono">Neutral</span>
+                    </h4>
+                    <div class="w-full bg-slate-900 h-4 rounded-full overflow-hidden flex relative">
+                        <div id="bar-early" class="bg-amber-500 h-full transition-all" style="width: 50%"></div>
+                        <div id="bar-late" class="bg-purple-500 h-full transition-all" style="width: 50%"></div>
+                        <div class="absolute inset-y-0 left-1/2 w-0.5 bg-white"></div>
+                    </div>
+                    <div class="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
+                        <span>FAST / EARLY (Adiantado)</span>
+                        <span>SLOW / LATE (Atrasado)</span>
+                    </div>
+                    <div class="mt-3 flex flex-wrap items-center justify-between gap-2">
+                        <span id="timing-mean-text" class="text-[11px] text-slate-300 font-mono">Média: —</span>
+                        <div id="chart-offset-box" class="hidden w-full flex items-center justify-between gap-2 text-[11px] text-amber-300 font-mono">
+                            <span id="chart-offset-info">Ajuste só desta música: 0ms</span>
+                            <button id="btn-reset-chart-offset" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded text-[10px] text-slate-300">Zerar desta música</button>
+                        </div>
+                        <button id="btn-calib-undo" class="hidden px-3 py-1.5 bg-slate-800 hover:bg-slate-700 border border-slate-600 rounded-lg text-[11px] font-semibold text-slate-300">Desfazer calibração</button>
+                        <button id="btn-apply-judge-offset" class="hidden px-3 py-1.5 bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/60 rounded-lg text-[11px] font-semibold text-cyan-300" title="Só aparece quando o desvio é grande e constante — muda a sincronia geral (vale pra tudo)">
+                            Aplicar na sincronia geral
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Timing por nota (scatter): mostra o offset (ms) de cada nota ao longo da run -->
+                <div class="bg-slate-800/40 p-4 rounded-xl border border-slate-800">
+                    <h4 class="text-xs font-bold text-slate-300 mb-2">TIMING POR NOTA (ms)</h4>
+                    <canvas id="timing-scatter" class="w-full" height="100"></canvas>
+                </div>
+
+                <div class="flex gap-4">
+                    <button id="btn-retry" class="flex-1 py-3 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-orbitron font-bold rounded-xl transition">RETRY DRILL</button>
+                    <button id="btn-back-menu" class="flex-1 py-3 bg-slate-800 hover:bg-slate-700 border border-slate-600 font-orbitron font-bold rounded-xl transition">BACK TO MENU</button>
+                </div>
+            </div>
+        </div>
+
+        <!-- CHART EDITOR MODAL -->
+        <div id="chart-editor-modal" class="hidden fixed inset-0 bg-slate-950 flex flex-col z-[70] ed-root">
+            <!-- ===== Barra 1: chart (nome, modo, BPM, duração) + ações principais ===== -->
+            <div class="ed-bar ed-bar-top">
+                <span class="ed-logo"><i class="fa-solid fa-pen-ruler"></i> CHART EDITOR</span>
+                <input id="editor-title" type="text" placeholder="Nome do chart" value="Meu Chart" class="ed-input ed-title">
+                <label class="ed-field">MODO
+                    <select id="editor-mode" class="ed-input ed-strong">
+                        <option value="4K">4B</option>
+                        <option value="5K">5B</option>
+                        <option value="6K">6B</option>
+                        <option value="8K">8B</option>
+                    </select>
+                </label>
+                <label class="ed-field">BPM
+                    <input id="editor-bpm" type="number" min="40" max="400" value="150" class="ed-input ed-num">
+                </label>
+                <label class="ed-field">DURAÇÃO (s)
+                    <input id="editor-duration" type="number" min="10" max="900" value="90" class="ed-input ed-num">
+                </label>
+                <span id="editor-pos-readout" class="ed-readout" title="Posição do mouse na grade">—</span>
+                <div class="flex-1"></div>
+                <button id="btn-editor-undo" disabled title="Desfazer (Ctrl+Z)" class="ed-btn"><i class="fa-solid fa-rotate-left"></i> Desfazer</button>
+                <button id="btn-editor-redo" disabled title="Refazer (Ctrl+Y ou Ctrl+Shift+Z)" class="ed-btn"><i class="fa-solid fa-rotate-right"></i> Refazer</button>
+                <button id="btn-editor-validate" title="Checagem rápida do chart (notas sobrepostas, fora da duração, BPM estranho, áudio faltando...)" class="ed-btn ed-emerald"><i class="fa-solid fa-list-check"></i> Verificar</button>
+                <button id="btn-editor-save" class="ed-btn ed-save"><i class="fa-solid fa-floppy-disk"></i> Salvar</button>
+                <button id="btn-editor-save-copy" title="Salva uma CÓPIA deste chart em Meus charts (a música do osu! original continua igual). Útil pra modificar uma música do osu! do seu jeito." class="ed-btn"><i class="fa-solid fa-copy"></i> Salvar em Meus charts</button>
+                <button id="btn-editor-shortcuts" title="Todos os atalhos (F1 ou ?)" class="ed-btn"><i class="fa-solid fa-keyboard"></i> Atalhos</button>
+                <button id="btn-editor-close" class="ed-btn"><i class="fa-solid fa-xmark"></i> Fechar</button>
+            </div>
+
+            <!-- ===== Barra 2: reprodução + visual ===== -->
+            <div class="ed-bar ed-bar-transport">
+                <div class="ed-group">
+                    <button id="btn-editor-rewind" title="Voltar 5s (←) · Shift+← = 1s" class="ed-btn ed-icon"><i class="fa-solid fa-backward-step"></i></button>
+                    <button id="btn-editor-playpause" class="ed-btn ed-play"><i class="fa-solid fa-play mr-1"></i> Play/Pause (Espaço)</button>
+                    <button id="btn-editor-forward" title="Avançar 5s (→) · Shift+→ = 1s" class="ed-btn ed-icon"><i class="fa-solid fa-forward-step"></i></button>
+                    <span id="editor-time-display" class="ed-time">0:00 / 0:00</span>
+                </div>
+                <div class="ed-group" title="Velocidade da música (sem mudar o tom). Atalhos: [ diminui, ] aumenta. O chart salvo não muda.">
+                    <span class="ed-lbl">VELOC.</span>
+                    <input id="editor-practice-speed" type="range" min="0.25" max="1.5" step="0.05" value="1" class="ed-range accent-cyan-400 cursor-pointer">
+                    <span id="editor-speed-val" class="ed-val">100%</span>
+                    <button id="btn-editor-speed-reset" class="ed-btn ed-mini">100%</button>
+                </div>
+                <div class="ed-group">
+                    <label id="editor-clap-label" title="Toca um 'clap' quando o playhead passa por cada nota — confirma DE OUVIDO se as notas estão na batida" class="ed-btn ed-pink cursor-pointer select-none">
+                        <input id="editor-clap-toggle" type="checkbox" class="accent-pink-500"> <i class="fa-solid fa-hands-clapping"></i> Clap
+                    </label>
+                    <button id="btn-editor-cue" title="Marca um PONTO DE RETORNO: toda vez que pausar, a música volta pra ele. Clique de novo no mesmo lugar pra tirar. Atalho: R" class="ed-btn ed-emerald"><i class="fa-solid fa-rotate-left"></i> Retorno (R)</button>
+                </div>
+                <div class="flex-1"></div>
+                <div class="ed-group">
+                    <span class="ed-lbl">VISUAL</span>
+                    <button id="btn-editor-simulator" title="Troca o VISUAL (grade clássica ↔ visual de jogo do Simulador)" class="ed-btn"><i class="fa-solid fa-gamepad mr-1"></i> Visual: Grade Clássica</button>
+                    <button id="btn-editor-highway" title="Visual Gear 3D: a pista em perspectiva, dá pra editar clicando direto nela (pausado)" class="ed-btn"><i class="fa-solid fa-road mr-1"></i> Gear 3D</button>
+                    <label class="ed-field" title="Velocidade de QUEDA das notas só no visual do Simulador (não muda nada do jogo)">
+                        <i class="fa-solid fa-down-long"></i>
+                        <select id="editor-fall-speed" class="ed-input">
+                            <option value="0.25">0.25x</option>
+                            <option value="0.5">0.5x</option>
+                            <option value="0.75">0.75x</option>
+                            <option value="1" selected>1x</option>
+                            <option value="1.5">1.5x</option>
+                        </select>
+                    </label>
+                </div>
+                <div class="ed-group">
+                    <button id="btn-editor-record-arm" title="Gravação por teclado: usa os botões reais do modo pra criar notas em tempo real enquanto a música toca" class="ed-btn"><i class="fa-solid fa-keyboard mr-1"></i> Gravar com Teclas</button>
+                    <label class="ed-field" title="Ao gravar: segurar a tecla por pelo menos meio tempo cria uma hold">
+                        <input id="editor-record-holds" type="checkbox" checked class="accent-cyan-400"> Holds
+                    </label>
+                </div>
+                <span id="editor-simulator-hint" class="hidden ed-sim-hint cursor-help" title=""></span>
+            </div>
+
+            <!-- Pins / seções (somem quando vazias) -->
+            <div id="editor-pins-bar" class="hidden items-center gap-1.5 px-4 py-1 border-b border-slate-800 bg-slate-900/40 shrink-0 overflow-x-auto">
+                <span class="text-[10px] font-bold text-amber-400/80 font-mono uppercase shrink-0"><i class="fa-solid fa-map-pin mr-1"></i>Pins:</span>
+                <div id="editor-pins-list" class="flex flex-wrap items-center gap-1"></div>
+            </div>
+            <div id="editor-sections-bar" class="hidden items-center gap-1.5 px-4 py-1 border-b border-slate-800 bg-slate-900/40 shrink-0 overflow-x-auto">
+                <span class="text-[10px] font-bold text-violet-400/80 font-mono uppercase shrink-0"><i class="fa-solid fa-flag mr-1"></i>Seções:</span>
+                <div id="editor-sections-list" class="flex flex-wrap items-center gap-1"></div>
+            </div>
+
+            <!-- ===== Corpo ===== -->
+            <div class="flex-1 flex overflow-hidden">
+                <!-- Painel esquerdo: ferramentas, dica grande, grade, marcadores, áudio -->
+                <div id="editor-tool-bar" class="ed-left">
+                    <div class="ed-sec-title">Ferramentas</div>
+                    <div class="ed-tools">
+                        <button data-editor-tool="select" title="Seleção (1)" class="ed-tool"><i class="fa-solid fa-arrow-pointer"></i><span>Seleção</span><kbd>1</kbd></button>
+                        <button data-editor-tool="tap" title="Tap (2)" class="ed-tool"><i class="fa-solid fa-circle-dot"></i><span>Tap</span><kbd>2</kbd></button>
+                        <button data-editor-tool="note" title="Nota/Hold (3)" class="ed-tool"><i class="fa-solid fa-grip-lines-vertical"></i><span>Nota/Hold</span><kbd>3</kbd></button>
+                        <button data-editor-tool="eraser" title="Borracha (4)" class="ed-tool"><i class="fa-solid fa-eraser"></i><span>Borracha</span><kbd>4</kbd></button>
+                        <button data-editor-tool="stair" title="Escada (5)" class="ed-tool"><i class="fa-solid fa-stairs"></i><span>Escada</span><kbd>5</kbd></button>
+                    </div>
+                    <div id="editor-tool-hint" class="ed-hint"></div>
+                    <div id="editor-stair-opts" class="ed-row">
+                        <select id="editor-stair-step" title="Passo da escada" class="ed-input flex-1">
+                            <option value="2">passo 1/8</option>
+                            <option value="3">passo 1/12</option>
+                            <option value="4" selected>passo 1/16</option>
+                            <option value="6">passo 1/24</option>
+                            <option value="8">passo 1/32</option>
+                        </select>
+                        <select id="editor-stair-mode" title="Formato da escada" class="ed-input flex-1">
+                            <option value="repeat">↗ repete</option>
+                            <option value="bounce">↗↘ vai-volta</option>
+                        </select>
+                    </div>
+
+                    <div class="ed-sec-title">Grade</div>
+                    <label class="ed-field ed-full">SNAP
+                        <select id="editor-snap" title="Divisão da grade (1/16 = 4 notas por batida). Atalhos: Q = mais grosso, E = mais fino" class="ed-input flex-1">
+                            <option value="1">1/4 (1 por batida)</option>
+                            <option value="2">1/8 (2 por batida)</option>
+                            <option value="3">1/12 (tercina)</option>
+                            <option value="4" selected>1/16 (4 por batida)</option>
+                            <option value="6">1/24 (tercina)</option>
+                            <option value="8">1/32 (8 por batida)</option>
+                            <option value="12">1/48 (tercina)</option>
+                            <option value="16">1/64 (16 por batida)</option>
+                        </select>
+                    </label>
+                    <div class="ed-snaps" title="Troca rápida do SNAP (Q / E)">
+                        <button type="button" data-editor-snap="1">4</button>
+                        <button type="button" data-editor-snap="2">8</button>
+                        <button type="button" data-editor-snap="3">12</button>
+                        <button type="button" data-editor-snap="4">16</button>
+                        <button type="button" data-editor-snap="6">24</button>
+                        <button type="button" data-editor-snap="8">32</button>
+                    </div>
+                    <label class="ed-field ed-full">ZOOM
+                        <input id="editor-zoom" type="range" min="30" max="160" value="70" class="flex-1">
+                    </label>
+
+                    <div class="ed-sec-title">Marcadores</div>
+                    <div class="ed-grid2">
+                        <button id="btn-editor-toggle-pin" title="Pin de navegação na posição atual (não afeta o jogo). Atalho: P" class="ed-btn ed-amber"><i class="fa-solid fa-map-pin"></i> Pin <kbd>P</kbd></button>
+                        <button id="btn-editor-add-section" title="Seção nomeada (Intro, Refrão...) na posição atual. Mesma posição de novo = renomear/remover. Atalho: N" class="ed-btn ed-violet"><i class="fa-solid fa-flag"></i> Seção <kbd>N</kbd></button>
+                        <button id="btn-editor-bpm-change" title="MUDANÇA DE BPM na posição atual. Mesma posição de novo = editar/remover. Atalho: B" class="ed-btn ed-orange"><i class="fa-solid fa-music"></i> BPM <kbd>B</kbd></button>
+                        <span class="inline-flex">
+                            <button id="btn-editor-song-end" title="Onde a MÚSICA TERMINA: clique na grade (ou na timeline), digite o tempo, ou use Auto. Atalho: End" class="ed-btn ed-rose ed-split-l"><i class="fa-solid fa-flag-checkered"></i> Fim</button>
+                            <button id="btn-editor-song-end-auto" title="Acha sozinho onde a música acaba de verdade" class="ed-btn ed-rose ed-split-r">Auto</button>
+                        </span>
+                    </div>
+
+                    <div class="ed-sec-title">Áudio</div>
+                    <input id="editor-import-audio" type="file" accept="audio/*" class="ed-file">
+                    <button id="btn-editor-detect-bpm" title="Estima o BPM a partir do áudio importado (só sugere)" class="ed-btn"><i class="fa-solid fa-wand-magic-sparkles"></i> Detectar BPM</button>
+                    <div id="editor-audio-status" class="ed-audio-status">Importe um áudio pra montar a chart manualmente</div>
+                </div>
+
+                <!-- Centro: cabeçalho das trilhas + régua de linhas + grade -->
+                <div class="flex-1 flex flex-col overflow-hidden">
+                    <div id="editor-track-labels" class="flex shrink-0 border-b border-slate-800 bg-slate-900/70"></div>
+                    <div id="editor-canvas-wrap" class="flex-1 overflow-y-auto overflow-x-hidden relative bg-slate-950">
+                        <div id="editor-canvas-spacer" class="w-px" style="height:400px" aria-hidden="true"></div>
+                        <canvas id="editor-ruler" class="ed-ruler" title="Régua: clique = seleciona a LINHA inteira · arraste = várias linhas · duplo clique = compasso · Shift = soma à seleção · botão direito arrastando = apaga as linhas"></canvas>
+                        <canvas id="editorCanvas" class="cursor-crosshair" style="position:absolute; top:0; left:50%; margin-left:-240px;"></canvas>
+                        <div id="editor-playhead" class="hidden absolute left-1/2 -translate-x-1/2 w-[480px] h-0.5 bg-red-500 pointer-events-none shadow-[0_0_6px_2px_rgba(239,68,68,0.6)]" style="top:0"></div>
+                    </div>
+                </div>
+
+                <!-- Timeline lateral -->
+                <div class="w-[84px] shrink-0 border-l border-slate-800 bg-slate-950 flex flex-col">
+                    <span class="text-[9px] text-slate-500 font-mono text-center uppercase py-1 border-b border-slate-800">Timeline</span>
+                    <div id="editor-timeline-wrap" class="flex-1 relative overflow-hidden">
+                        <canvas id="editor-timeline" class="absolute inset-0 w-full h-full cursor-pointer" title="Timeline da música inteira — clique ou arraste pra pular pra qualquer ponto"></canvas>
+                    </div>
+                </div>
+
+                <!-- Painel direito: propriedades, trecho, arquivo, meus charts -->
+                <div class="ed-right">
+                    <div class="ed-sec-title"><i class="fa-solid fa-sliders mr-1"></i>Propriedades</div>
+                    <div id="editor-properties" class="ed-props"></div>
+
+                    <div class="ed-sec-title"><i class="fa-solid fa-scissors mr-1"></i>Trecho</div>
+                    <div id="editor-range-box" class="ed-range-box"></div>
+
+                    <div class="ed-sec-title"><i class="fa-solid fa-file mr-1"></i>Arquivo</div>
+                    <div class="ed-grid2 px-3 pb-2">
+                        <button id="btn-editor-new" class="ed-btn"><i class="fa-solid fa-file"></i> Novo</button>
+                        <button id="btn-editor-export" class="ed-btn"><i class="fa-solid fa-file-export"></i> Exportar</button>
+                        <label class="ed-btn cursor-pointer"><i class="fa-solid fa-file-import"></i> Importar
+                            <input id="editor-import-json" type="file" accept="application/json" class="hidden">
+                        </label>
+                        <button id="btn-editor-clear" class="ed-btn ed-danger"><i class="fa-solid fa-trash"></i> Limpar tudo</button>
+                    </div>
+                    <div class="ed-sec-title">Meus charts</div>
+                    <div id="editor-chart-list" class="flex-1 overflow-y-auto p-2 flex flex-col gap-1.5"></div>
+                </div>
+            </div>
+
+            <!-- ===== Barra de status (mensagens grandes e legíveis) ===== -->
+            <div class="ed-status">
+                <span id="editor-status-msg" class="ed-status-msg"></span>
+                <span id="editor-status-keys" class="ed-status-keys"></span>
+            </div>
+            <!-- Painel de resultado da checagem do chart (ver validateEditorChart/
+                 showEditorValidationReport) — inspirado no ValidationMenu.cs do Moonscraper,
+                 bem mais simples: só uma lista de avisos, nada bloqueia salvar/exportar. -->
+            <div id="editor-validate-modal" class="hidden absolute inset-0 bg-slate-950/90 backdrop-blur-sm flex justify-center items-center p-6 z-[80]">
+                <div class="bg-slate-900 border border-slate-700 rounded-lg shadow-2xl w-full max-w-lg max-h-[80vh] flex flex-col">
+                    <div class="flex items-center justify-between px-4 py-3 border-b border-slate-800">
+                        <h3 class="text-sm font-bold text-emerald-300"><i class="fa-solid fa-list-check mr-1.5"></i>Verificação do Chart</h3>
+                        <button id="btn-editor-validate-close" class="text-slate-400 hover:text-white text-lg leading-none px-1">&times;</button>
+                    </div>
+                    <div id="editor-validate-results" class="flex-1 overflow-y-auto p-4 space-y-2 text-xs"></div>
+                </div>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Main Game Script -->
+    <script src="perfis.js?v=20261028c"></script>
+    <script src="gl-renderer.js?v=20261028c"></script>
+    <script src="script.js?v=20261028c"></script>
+    <script src="music-sync.js?v=20261028c"></script>
+    <script src="gear-themes.js?v=20261028c"></script>
+    <script src="game-gl.js?v=20261028c"></script>
+    <script src="progress.js?v=20261028c"></script>
+    <script src="editor-extras.js?v=20261028c"></script>
+    <script src="editor-validate.js?v=20261028c"></script>
+    <script src="backup.js?v=20261028c"></script>
+    <script src="gamepad.js?v=20261028c"></script>
+    <script src="osu.js?v=20261028c"></script>
+    <script src="telas.js?v=20261028c"></script>
+    <script src="replay.js?v=20261028c"></script>
+    <script src="fundo.js?v=20261028c"></script>
+    <script src="biblioteca.js?v=20261028c"></script>
+    <script src="modificadores.js?v=20261028c"></script>
+    <script src="previa.js?v=20261028c"></script>
+    <script src="calibracao.js?v=20261028c"></script>
+    <script src="calibracao-tela.js?v=20261028c"></script>
+    <script src="dificuldade.js?v=20261028c"></script>
+    <script src="sincronia.js?v=20261028c"></script>
+    <script src="palco3d.js?v=20261028c"></script>
+    <script src="resultado.js?v=20261028c"></script>
+    <script src="editor-apagar.js?v=20261028c"></script>
+    <script src="editor-layout.js?v=20261028c"></script>
+    <script src="sair.js?v=20261028c"></script>
+    <script src="novidades.js?v=20261028c"></script>
+    <script src="personalizador.js?v=20261028c"></script>
+    <script src="personagens.js?v=20261028c"></script>
+    <script src="notas-loja.js?v=20261028c"></script>
+    <script src="desafio.js?v=20261028c"></script>
+    <script src="nivel.js?v=20261028c"></script>
+    <script src="skinfx.js?v=20261028c"></script>
+    <script src="torcida.js?v=20261028c"></script>
+    <script src="colecao.js?v=20261028c"></script>
+    <script src="previa-chart.js?v=20261028c"></script>
+    <script src="menu-novo.js?v=20261028c"></script>
+    <script src="arya-lofi.js?v=20261028c"></script>
+    <script src="gamepad-menu.js?v=20261028c"></script>
+    <script src="web.js?v=20261028c"></script>
+    <script src="vendor/supabase-2.117.1.js"></script>
+    <script src="nuvem-opus.js?v=20261028c"></script>
+    <script src="nuvem.js?v=20261028c"></script>
+    <script src="nuvem-progresso.js?v=20261028c"></script>
+    <script src="ranking.js?v=20261028c"></script>
+    <script src="config-abas.js?v=20261028c"></script>
+</body>
+</html>
