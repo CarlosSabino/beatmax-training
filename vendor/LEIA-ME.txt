@@ -1,0 +1,6 @@
+Arquivos locais do visual (pra funcionar sem internet):
+- tailwind.css  : Tailwind CSS 3 já compilado com as classes usadas no index.html e nos .js
+- fonts.css + fonts/ : fontes Orbitron, Rajdhani e Barlow Condensed
+- fontawesome/  : ícones Font Awesome 6.4.0
+Não precisa mexer aqui. Se o projeto ganhar classes novas do Tailwind, o tailwind.css é
+gerado de novo (npx tailwindcss) lendo index.html e *.js.
